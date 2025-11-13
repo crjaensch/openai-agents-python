@@ -6,7 +6,10 @@ from collections.abc import Awaitable
 from dataclasses import dataclass, field
 from typing import Any, Callable, Generic, cast
 
+from agents.prompts import Prompt
+
 from ..agent import AgentBase
+from ..guardrail import OutputGuardrail
 from ..handoffs import Handoff
 from ..lifecycle import AgentHooksBase, RunHooksBase
 from ..logger import logger
@@ -54,12 +57,22 @@ class RealtimeAgent(AgentBase, Generic[TContext]):
     return a string.
     """
 
+    prompt: Prompt | None = None
+    """A prompt object. Prompts allow you to dynamically configure the instructions, tools
+    and other config for an agent outside of your code. Only usable with OpenAI models.
+    """
+
     handoffs: list[RealtimeAgent[Any] | Handoff[TContext, RealtimeAgent[Any]]] = field(
         default_factory=list
     )
     """Handoffs are sub-agents that the agent can delegate to. You can provide a list of handoffs,
     and the agent can choose to delegate to them if relevant. Allows for separation of concerns and
     modularity.
+    """
+
+    output_guardrails: list[OutputGuardrail[TContext]] = field(default_factory=list)
+    """A list of checks that run on the final output of the agent, after generating a response.
+    Runs only if the agent produces a final output.
     """
 
     hooks: RealtimeAgentHooks | None = None

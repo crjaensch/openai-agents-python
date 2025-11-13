@@ -1,8 +1,9 @@
 import functools
 import json
 from dataclasses import dataclass
-from typing import TYPE_CHECKING, Any, Callable, Optional, Union
+from typing import TYPE_CHECKING, Any, Callable, Optional, Protocol, Union
 
+import httpx
 from typing_extensions import NotRequired, TypedDict
 
 from .. import _debug
@@ -19,6 +20,21 @@ if TYPE_CHECKING:
 
     from ..agent import AgentBase
     from .server import MCPServer
+
+
+class HttpClientFactory(Protocol):
+    """Protocol for HTTP client factory functions.
+
+    This interface matches the MCP SDK's McpHttpClientFactory but is defined locally
+    to avoid accessing internal MCP SDK modules.
+    """
+
+    def __call__(
+        self,
+        headers: Optional[dict[str, str]] = None,
+        timeout: Optional[httpx.Timeout] = None,
+        auth: Optional[httpx.Auth] = None,
+    ) -> httpx.AsyncClient: ...
 
 
 @dataclass
@@ -194,23 +210,21 @@ class MCPUtil:
         else:
             logger.debug(f"MCP tool {tool.name} returned {result}")
 
-        # The MCP tool result is a list of content items, whereas OpenAI tool outputs are a single
-        # string. We'll try to convert.
-        if len(result.content) == 1:
-            tool_output = result.content[0].model_dump_json()
-            # Append structured content if it exists and we're using it.
-            if server.use_structured_content and result.structuredContent:
-                tool_output = f"{tool_output}\n{json.dumps(result.structuredContent)}"
-        elif len(result.content) > 1:
-            tool_results = [item.model_dump(mode="json") for item in result.content]
-            if server.use_structured_content and result.structuredContent:
-                tool_results.append(result.structuredContent)
-            tool_output = json.dumps(tool_results)
-        elif server.use_structured_content and result.structuredContent:
+        # If structured content is requested and available, use it exclusively
+        if server.use_structured_content and result.structuredContent:
             tool_output = json.dumps(result.structuredContent)
         else:
-            # Empty content is a valid result (e.g., "no results found")
-            tool_output = "[]"
+            # Fall back to regular text content processing
+            # The MCP tool result is a list of content items, whereas OpenAI tool
+            # outputs are a single string. We'll try to convert.
+            if len(result.content) == 1:
+                tool_output = result.content[0].model_dump_json()
+            elif len(result.content) > 1:
+                tool_results = [item.model_dump(mode="json") for item in result.content]
+                tool_output = json.dumps(tool_results)
+            else:
+                # Empty content is a valid result (e.g., "no results found")
+                tool_output = "[]"
 
         current_span = get_current_span()
         if current_span:

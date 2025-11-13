@@ -40,6 +40,12 @@ class RealtimeModelAudioEvent:
     data: bytes
     response_id: str
 
+    item_id: str
+    """The ID of the item containing audio."""
+
+    content_index: int
+    """The index of the audio content in `item.content`"""
+
     type: Literal["audio"] = "audio"
 
 
@@ -47,12 +53,24 @@ class RealtimeModelAudioEvent:
 class RealtimeModelAudioInterruptedEvent:
     """Audio interrupted."""
 
+    item_id: str
+    """The ID of the item containing audio."""
+
+    content_index: int
+    """The index of the audio content in `item.content`"""
+
     type: Literal["audio_interrupted"] = "audio_interrupted"
 
 
 @dataclass
 class RealtimeModelAudioDoneEvent:
     """Audio done."""
+
+    item_id: str
+    """The ID of the item containing audio."""
+
+    content_index: int
+    """The index of the audio content in `item.content`"""
 
     type: Literal["audio_done"] = "audio_done"
 
@@ -65,6 +83,17 @@ class RealtimeModelInputAudioTranscriptionCompletedEvent:
     transcript: str
 
     type: Literal["input_audio_transcription_completed"] = "input_audio_transcription_completed"
+
+
+@dataclass
+class RealtimeModelInputAudioTimeoutTriggeredEvent:
+    """Input audio timeout triggered."""
+
+    item_id: str
+    audio_start_ms: int
+    audio_end_ms: int
+
+    type: Literal["input_audio_timeout_triggered"] = "input_audio_timeout_triggered"
 
 
 @dataclass
@@ -138,6 +167,15 @@ class RealtimeModelExceptionEvent:
     type: Literal["exception"] = "exception"
 
 
+@dataclass
+class RealtimeModelRawServerEvent:
+    """Raw events forwarded from the server."""
+
+    data: Any
+
+    type: Literal["raw_server_event"] = "raw_server_event"
+
+
 # TODO (rm) Add usage events
 
 
@@ -147,6 +185,7 @@ RealtimeModelEvent: TypeAlias = Union[
     RealtimeModelAudioEvent,
     RealtimeModelAudioInterruptedEvent,
     RealtimeModelAudioDoneEvent,
+    RealtimeModelInputAudioTimeoutTriggeredEvent,
     RealtimeModelInputAudioTranscriptionCompletedEvent,
     RealtimeModelTranscriptDeltaEvent,
     RealtimeModelItemUpdatedEvent,
@@ -156,4 +195,5 @@ RealtimeModelEvent: TypeAlias = Union[
     RealtimeModelTurnEndedEvent,
     RealtimeModelOtherEvent,
     RealtimeModelExceptionEvent,
+    RealtimeModelRawServerEvent,
 ]

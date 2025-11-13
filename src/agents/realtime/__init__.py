@@ -3,6 +3,7 @@ from .config import (
     RealtimeAudioFormat,
     RealtimeClientMessage,
     RealtimeGuardrailsSettings,
+    RealtimeInputAudioNoiseReductionConfig,
     RealtimeInputAudioTranscriptionConfig,
     RealtimeModelName,
     RealtimeModelTracingConfig,
@@ -47,6 +48,8 @@ from .model import (
     RealtimeModel,
     RealtimeModelConfig,
     RealtimeModelListener,
+    RealtimePlaybackState,
+    RealtimePlaybackTracker,
 )
 from .model_events import (
     RealtimeConnectionStatus,
@@ -99,6 +102,7 @@ __all__ = [
     "RealtimeAudioFormat",
     "RealtimeClientMessage",
     "RealtimeGuardrailsSettings",
+    "RealtimeInputAudioNoiseReductionConfig",
     "RealtimeInputAudioTranscriptionConfig",
     "RealtimeModelName",
     "RealtimeModelTracingConfig",
@@ -139,6 +143,8 @@ __all__ = [
     "RealtimeModel",
     "RealtimeModelConfig",
     "RealtimeModelListener",
+    "RealtimePlaybackTracker",
+    "RealtimePlaybackState",
     # Model Events
     "RealtimeConnectionStatus",
     "RealtimeModelAudioDoneEvent",

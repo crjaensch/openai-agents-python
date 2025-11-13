@@ -15,7 +15,7 @@ Realtime agents allow for conversational flows, processing audio and text inputs
 
 The realtime system consists of several key components:
 
--   **RealtimeAgent**: An agent, configured wiht instructions, tools and handoffs.
+-   **RealtimeAgent**: An agent, configured with instructions, tools and handoffs.
 -   **RealtimeRunner**: Manages configuration. You can call `runner.run()` to get a session.
 -   **RealtimeSession**: A single interaction session. You typically create one each time a user starts a conversation, and keep it alive until the conversation is done.
 -   **RealtimeModel**: The underlying model interface (typically OpenAI's WebSocket implementation)
@@ -48,7 +48,7 @@ Key differences from regular agents:
 
 ### Model settings
 
-The session configuration allows you to control the underlying realtime model behavior. You can configure the model name (such as `gpt-4o-realtime-preview`), voice selection (alloy, echo, fable, onyx, nova, shimmer), and supported modalities (text and/or audio). Audio formats can be set for both input and output, with PCM16 being the default.
+The session configuration allows you to control the underlying realtime model behavior. You can configure the model name (such as `gpt-realtime`), voice selection (alloy, echo, fable, onyx, nova, shimmer), and supported modalities (text and/or audio). Audio formats can be set for both input and output, with PCM16 being the default.
 
 ### Audio configuration
 
@@ -130,6 +130,24 @@ For complete event details, see [`RealtimeSessionEvent`][agents.realtime.events.
 
 Only output guardrails are supported for realtime agents. These guardrails are debounced and run periodically (not on every word) to avoid performance issues during real-time generation. The default debounce length is 100 characters, but this is configurable.
 
+Guardrails can be attached directly to a `RealtimeAgent` or provided via the session's `run_config`. Guardrails from both sources run together.
+
+```python
+from agents.guardrail import GuardrailFunctionOutput, OutputGuardrail
+
+def sensitive_data_check(context, agent, output):
+    return GuardrailFunctionOutput(
+        tripwire_triggered="password" in output,
+        output_info=None,
+    )
+
+agent = RealtimeAgent(
+    name="Assistant",
+    instructions="...",
+    output_guardrails=[OutputGuardrail(guardrail_function=sensitive_data_check)],
+)
+```
+
 When a guardrail is triggered, it generates a `guardrail_tripped` event and can interrupt the agent's current response. The debounce behavior helps balance safety with real-time performance requirements. Unlike text agents, realtime agents do **not** raise an Exception when guardrails are tripped.
 
 ## Audio processing
@@ -137,6 +155,35 @@ When a guardrail is triggered, it generates a `guardrail_tripped` event and can 
 Send audio to the session using [`session.send_audio(audio_bytes)`][agents.realtime.session.RealtimeSession.send_audio] or send text using [`session.send_message()`][agents.realtime.session.RealtimeSession.send_message].
 
 For audio output, listen for `audio` events and play the audio data through your preferred audio library. Make sure to listen for `audio_interrupted` events to stop playback immediately and clear any queued audio when the user interrupts the agent.
+
+## SIP integration
+
+You can attach realtime agents to phone calls that arrive via the [Realtime Calls API](https://platform.openai.com/docs/guides/realtime-sip). The SDK provides [`OpenAIRealtimeSIPModel`][agents.realtime.openai_realtime.OpenAIRealtimeSIPModel], which reuses the same agent flow while negotiating media over SIP.
+
+To use it, pass the model instance to the runner and supply the SIP `call_id` when starting the session. The call ID is delivered by the webhook that signals an incoming call.
+
+```python
+from agents.realtime import RealtimeAgent, RealtimeRunner
+from agents.realtime.openai_realtime import OpenAIRealtimeSIPModel
+
+runner = RealtimeRunner(
+    starting_agent=agent,
+    model=OpenAIRealtimeSIPModel(),
+)
+
+async with await runner.run(
+    model_config={
+        "call_id": call_id_from_webhook,
+        "initial_model_settings": {
+            "turn_detection": {"type": "semantic_vad", "interrupt_response": True},
+        },
+    },
+) as session:
+    async for event in session:
+        ...
+```
+
+When the caller hangs up, the SIP session ends and the realtime connection closes automatically. For a complete telephony example, see [`examples/realtime/twilio_sip`](https://github.com/openai/openai-agents-python/tree/main/examples/realtime/twilio_sip).
 
 ## Direct model access
 
